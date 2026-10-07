@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spa Schedule & Therapist Manager</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        spa: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                            dark: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar for Smooth Timeline Navigation */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Timeline Main Grid Container */
+        .timeline-wrapper {
+            overflow-x: auto;
+            overflow-y: auto;
+            position: relative;
+            max-height: calc(100vh - 180px);
+        }
+
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: 230px repeat(24, minmax(80px, 1fr));
+            min-width: max-content;
+            background-color: #e2e8f0;
+            gap: 1px;
+        }
+
+        /* Sticky Far-Left Therapist Column */
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 25;
+            background-color: #ffffff;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.05);
+        }
+
+        /* Sticky Top Header */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background-color: #f8fafc;
+        }
+
+        /* Top Left Corner Box */
+        .sticky-corner {
+            position: sticky;
+            top: 0;
+            left: 0;
+            z-index: 35;
+            background-color: #f1f5f9;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.08);
+        }
+
+        /* Grid Slot Cell */
+        .slot-cell {
+            background-color: #ffffff;
+            height: 68px;
+            transition: background-color 0.15s ease;
+            cursor: pointer;
+        }
+        .slot-cell:hover {
+            background-color: #f0fdf4;
+        }
+
+        /* Appointment Block Card */
+        .appointment-card {
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            color: white;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            margin: 4px 2px;
+            z-index: 10;
+        }
+        .appointment-card:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            z-index: 15;
+        }
+
+        .modal-blur {
+            background-color: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+
+    <header class="bg-spa-800 text-white shadow-md z-30 shrink-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-spa-600/50 flex items-center justify-center border border-spa-500/30">
+                    <i class="fa-solid fa-spa text-xl text-spa-200"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight leading-tight">Laraswara SPA Schedule</h1>
+                    <p class="text-xs text-spa-200">Sistem Internal Pengelola Jadwal & Staf Terapist</p>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <nav class="flex gap-1 bg-spa-900/60 p-1.5 rounded-xl border border-spa-700/50">
+                <button onclick="switchTab('timeline')" id="nav-timeline" class="nav-tab px-4 py-1.5 rounded-lg bg-spa-600 text-white font-medium text-xs transition-all flex items-center gap-2 shadow-sm">
+                    <i class="fa-regular fa-calendar-days"></i> Timeline Grid
+                </button>
+                <button onclick="switchTab('therapists')" id="nav-therapists" class="nav-tab px-4 py-1.5 rounded-lg text-spa-200 hover:text-white hover:bg-spa-800/80 font-medium text-xs transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-users"></i> Tim Terapis
+                </button>
+                <button onclick="switchTab('treatments')" id="nav-treatments" class="nav-tab px-4 py-1.5 rounded-lg text-spa-200 hover:text-white hover:bg-spa-800/80 font-medium text-xs transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-list-check"></i> Daftar Treatment
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-1 overflow-hidden max-w-7xl w-full mx-auto p-4 flex flex-col">
+        
+        <!-- TOOLBAR JADWAL & NAVIGASI TANGGAL -->
+        <div id="toolbar-container" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200/80 mb-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
+            <!-- Date Controls -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center border border-slate-300 rounded-xl px-3 py-1.5 bg-slate-50 focus-within:ring-2 focus-within:ring-spa-500 transition-all">
+                    <i class="fa-regular fa-calendar text-slate-500 mr-2 text-xs"></i>
+                    <input type="date" id="dateSelect" class="bg-transparent border-none outline-none text-slate-700 font-semibold text-xs cursor-pointer">
+                </div>
+                
+                <div class="flex rounded-xl border border-slate-200 overflow-hidden bg-slate-50 p-0.5">
+                    <button onclick="changeDate(-1)" class="px-2.5 py-1 text-slate-600 hover:bg-white hover:shadow-sm rounded-lg text-xs font-medium transition-all" title="Hari Sebelumnya">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button onclick="setToday()" class="px-3 py-1 text-spa-700 hover:bg-white hover:shadow-sm rounded-lg text-xs font-bold transition-all">
+                        Hari Ini
+                    </button>
+                    <button onclick="changeDate(1)" class="px-2.5 py-1 text-slate-600 hover:bg-white hover:shadow-sm rounded-lg text-xs font-medium transition-all" title="Hari Berikutnya">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+
+                <span id="dayBadge" class="text-xs font-bold px-3 py-1 bg-teal-50 text-teal-800 border border-teal-200 rounded-full flex items-center gap-1.5">
+                    <i class="fa-regular fa-clock"></i> <span id="scheduleCount">0 Booking</span>
+                </span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <button onclick="openBookingModal()" class="bg-spa-600 hover:bg-spa-700 text-white px-3.5 py-2 rounded-xl shadow-sm text-xs font-semibold flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-plus text-xs"></i> Tambah Jadwal
+                </button>
+                <button onclick="openAddTherapistModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl shadow-sm text-xs font-semibold flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-user-plus text-xs"></i> Tambah Terapis
+                </button>
+                <div class="h-4 w-px bg-slate-200 mx-1"></div>
+                <button onclick="openClearConfirmModal()" class="bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5">
+                    <i class="fa-regular fa-trash-can"></i> Bersihkan Hari Ini
+                </button>
+                <button onclick="openResetModal()" class="bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5" title="Kembalikan data sampel awal">
+                    <i class="fa-solid fa-rotate-left"></i> Reset Demo
+                </button>
+            </div>
+        </div>
+
+        <section id="view-timeline" class="view-section flex-1 flex flex-col min-h-0 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="timeline-wrapper flex-1">
+                <div class="timeline-grid" id="timelineGrid">
+                    <!-- Dynamic Grid generated via JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Bottom Legend -->
+            <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2 shrink-0">
+                <div class="flex items-center gap-4 flex-wrap" id="legendContainer">
+                    <!-- Dynamic Color Legend -->
+                </div>
+                <div class="text-slate-400 italic">
+                    <i class="fa-solid fa-circle-info mr-1"></i> Klik slot kosong untuk booking, atau klik kartu untuk lihat/hapus detail.
+                </div>
+            </div>
+        </section>
+
+        <section id="view-therapists" class="view-section hidden flex-1 overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Daftar Staf Terapis Active</h2>
+                        <p class="text-xs text-slate-500">Kelola terapis yang bertugas. Menambah atau menghapus terapis di sini akan langsung mengubah baris di Timeline Grid.</p>
+                    </div>
+                    <button onclick="openAddTherapistModal()" class="bg-spa-600 hover:bg-spa-700 text-white px-4 py-2 rounded-xl shadow-sm text-xs font-semibold flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-user-plus"></i> Tambah Terapis Baru
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="therapistDirectory">
+                    <!-- Dynamic Therapist Cards -->
+                </div>
+            </div>
+        </section>
+
+        <section id="view-treatments" class="view-section hidden flex-1 overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Katalog Layanan Perawatan (Treatments)</h2>
+                        <p class="text-xs text-slate-500">Tambah, ubah, atau hapus jenis treatment, durasi, dan harganya sesuai kebutuhan spa Anda.</p>
+                    </div>
+                    <button onclick="openAddTreatmentModal()" class="bg-spa-600 hover:bg-spa-700 text-white px-4 py-2 rounded-xl shadow-sm text-xs font-semibold flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-plus"></i> Tambah Treatment Baru
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                                <th class="p-3.5">Kategori / Warna</th>
+                                <th class="p-3.5">Nama Perawatan</th>
+                                <th class="p-3.5">Durasi Standard</th>
+                                <th class="p-3.5 text-right">Harga Dasar (IDR)</th>
+                                <th class="p-3.5 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="treatmentTableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Dynamic Treatment List -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+
+    <!-- MODAL 1: FORM TAMBAH JADWAL BOOKING -->
+    <div id="bookingModal" class="fixed inset-0 modal-blur hidden z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-200" id="bookingModalCard">
+            <div class="bg-spa-800 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-plus text-spa-200"></i> Buat Jadwal Booking Baru
+                </h3>
+                <button type="button" onclick="closeBookingModal()" class="text-white/70 hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+            
+            <form id="bookingForm" class="p-5 space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Nama Pelanggan / Catatan Kamar</label>
+                    <input type="text" id="inputCustomer" required placeholder="Contoh: Ibu Ani / Room 2" 
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none text-xs">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Terapis Bertugas</label>
+                        <select id="selectTherapist" required class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none bg-white text-xs">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Tanggal</label>
+                        <input type="date" id="inputBookingDate" required readonly class="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-100 text-slate-600 outline-none text-xs">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Pilih Perawatan (Treatment)</label>
+                    <select id="selectTreatment" required onchange="calculateEndTime()" class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none bg-white text-xs">
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Jam Mulai</label>
+                        <select id="selectStartTime" required onchange="calculateEndTime()" class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none bg-white text-xs">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Jam Selesai (Bisa Pilih Manual)</label>
+                        <select id="selectEndTime" required class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none bg-white text-xs font-bold text-slate-700">
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex justify-end gap-2">
+                    <button type="button" onclick="closeBookingModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold transition-all">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-spa-600 hover:bg-spa-700 text-white rounded-xl font-semibold shadow-sm transition-all">Simpan Jadwal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: DETAIL BOOKING & HAPUS JADWAL INDIVIDUAL -->
+    <div id="detailModal" class="fixed inset-0 modal-blur hidden z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-200" id="detailModalCard">
+            <div class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="font-bold text-xs text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-spa-600"></i> Detail Rincian Booking
+                </h3>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+            
+            <div class="p-5 space-y-3 text-xs">
+                <div class="p-3 bg-teal-50 border border-teal-100 rounded-xl text-teal-900">
+                    <span class="text-[10px] text-teal-600 font-medium block">Pelanggan / Catatan:</span>
+                    <span class="font-bold text-sm" id="detailCustomerName">--</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <span class="text-[10px] text-slate-400 block">Terapis:</span>
+                        <span class="font-semibold text-slate-800" id="detailTherapistName">--</span>
+                    </div>
+                    <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <span class="text-[10px] text-slate-400 block">Waktu:</span>
+                        <span class="font-semibold text-slate-800" id="detailTimeSpan">--</span>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Layanan:</span>
+                        <span class="font-semibold text-slate-800" id="detailTreatmentName">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Durasi:</span>
+                        <span class="font-semibold text-slate-800" id="detailDuration">--</span>
+                    </div>
+                    <div class="flex justify-between border-t border-slate-200 pt-1.5 mt-1.5">
+                        <span class="text-slate-500">Tarif Layanan:</span>
+                        <span class="font-bold text-spa-700" id="detailPrice">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between gap-2">
+                <button id="btnDeleteAppt" onclick="" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl font-semibold text-xs transition-all flex items-center gap-1.5">
+                    <i class="fa-regular fa-trash-can"></i> Hapus Jadwal Ini
+                </button>
+                <button onclick="closeDetailModal()" class="px-4 py-2 bg-white border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-100 font-semibold text-xs transition-all">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: TAMBAH TERAPIS BARU -->
+    <div id="addTherapistModal" class="fixed inset-0 modal-blur hidden z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-200" id="addTherapistModalCard">
+            <div class="bg-slate-800 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-spa-200"></i> Tambah Staf Terapis Baru
+                </h3>
+                <button onclick="closeAddTherapistModal()" class="text-white/70 hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+            
+            <form id="addTherapistForm" class="p-5 space-y-3.5 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Nama Lengkap Terapis</label>
+                    <input type="text" id="inputTherapistName" required placeholder="Contoh: Mbak Nina / Mas Eko" 
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Spesialisasi / Peran</label>
+                    <input type="text" id="inputTherapistRole" required placeholder="Contoh: Senior Therapist / Refleksi" 
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Warna Aksen Profil</label>
+                    <div class="flex gap-2" id="colorPickerOptions">
+                        <!-- Color buttons filled by JS -->
+                    </div>
+                    <input type="hidden" id="inputTherapistColor" value="#0f766e">
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                    <button type="button" onclick="closeAddTherapistModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold transition-all">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-spa-600 hover:bg-spa-700 text-white rounded-xl font-semibold shadow-sm transition-all">Simpan Terapis</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: KONFIRMASI HAPUS TERAPIS -->
+    <div id="deleteTherapistModal" class="fixed inset-0 modal-blur hidden z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 text-center transform scale-95 transition-transform duration-200" id="deleteTherapistModalCard">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3 text-lg">
+                <i class="fa-solid fa-user-xmark"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 text-sm mb-1">Hapus Terapis Ini?</h3>
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                Menghapus <strong id="deleteTherapistTargetName" class="text-slate-800">--</strong> akan menghapus barisnya dari timeline beserta semua jadwal booking yang terhubung dengannya.
+            </p>
+            <div class="flex gap-2 justify-center">
+                <button onclick="closeDeleteTherapistModal()" class="w-1/2 py-2 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-all">Batal</button>
+                <button id="btnConfirmDeleteTherapist" onclick="" class="w-1/2 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: TAMBAH TREATMENT BARU -->
+    <div id="addTreatmentModal" class="fixed inset-0 modal-blur hidden z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-200" id="addTreatmentModalCard">
+            <div class="bg-slate-800 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-plus text-spa-200"></i> Tambah Layanan Treatment Baru
+                </h3>
+                <button onclick="closeAddTreatmentModal()" class="text-white/70 hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+            
+            <form id="addTreatmentForm" class="p-5 space-y-3.5 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Nama Perawatan</label>
+                    <input type="text" id="inputTreatmentName" required placeholder="Contoh: Body Spa Scrub Lavender" 
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Kategori</label>
+                        <input type="text" id="inputTreatmentCategory" required placeholder="Contoh: Massage / Facial" 
+                            class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Durasi (Menit)</label>
+                        <input type="number" id="inputTreatmentDuration" min="15" step="15" required placeholder="60" 
+                            class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Harga Dasar (IDR)</label>
+                    <input type="number" id="inputTreatmentPrice" min="0" step="5000" required placeholder="150000" 
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Warna Badge Kategori</label>
+                    <select id="inputTreatmentColorClass" required class="w-full border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-spa-500 outline-none bg-white">
+                        <option value="bg-teal-600">Teal / Hijau Kebiruan</option>
+                        <option value="bg-emerald-600">Emerald / Hijau Segar</option>
+                        <option value="bg-purple-600">Ungu / Elegant</option>
+                        <option value="bg-indigo-600">Indigo / Biru Gelap</option>
+                        <option value="bg-blue-600">Biru Muda</option>
+                        <option value="bg-amber-600">Amber / Cokelat Mas</option>
+                        <option value="bg-rose-600">Rose / Merah Muda</option>
+                    </select>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                    <button type="button" onclick="closeAddTreatmentModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold transition-all">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-spa-600 hover:bg-spa-700 text-white rounded-xl font-semibold shadow-sm transition-all">Simpan Treatment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 6: KONFIRMASI BERSIHKAN HARI INI -->
+    <div id="clearConfirmModal" class="fixed inset-0 modal-blur hidden z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 text-center transform scale-95 transition-transform duration-200" id="clearConfirmModalCard">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3 text-lg">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 text-sm mb-1">Bersihkan Jadwal Hari Ini?</h3>
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                Semua booking untuk tanggal <strong id="clearTargetDateText" class="text-slate-800">--</strong> akan dihapus dari sistem.
+            </p>
+            <div class="flex gap-2 justify-center">
+                <button onclick="closeClearConfirmModal()" class="w-1/2 py-2 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-all">Batal</button>
+                <button onclick="confirmClearToday()" class="w-1/2 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all">Ya, Bersihkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastNotification" class="fixed bottom-5 right-5 z-50 transform translate-y-10 opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-xs font-semibold text-white">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-sm"></i>
+        <span id="toastMessage">Notifikasi</span>
+    </div>
+
+    <script>
+        // Storage Keys
+        const STORAGE_KEY_APPTS = 'spa_appointments_v3';
+        const STORAGE_KEY_THERAPISTS = 'spa_therapists_v3';
+        const STORAGE_KEY_TREATMENTS = 'spa_treatments_v3';
+
+        // Master Data Default Treatments
+        const defaultTreatments = [
+            { id: 'tr1', name: 'Traditional Javanese Massage', durationMin: 90, price: 175000, category: 'Massage', colorClass: 'bg-teal-600' },
+            { id: 'tr2', name: 'Aromatherapy Relaxation', durationMin: 60, price: 150000, category: 'Massage', colorClass: 'bg-emerald-600' },
+            { id: 'tr3', name: 'Full Body Scrub & Lulur', durationMin: 60, price: 130000, category: 'Spa & Scrub', colorClass: 'bg-purple-600' },
+            { id: 'tr4', name: 'Royal Spa Package (Massage + Lulur)', durationMin: 120, price: 290000, category: 'Package', colorClass: 'bg-indigo-600' },
+            { id: 'tr5', name: 'Refleksi Kaki (Reflexology)', durationMin: 45, price: 85000, category: 'Reflexology', colorClass: 'bg-blue-600' },
+            { id: 'tr6', name: 'Totok Wajah & Head Therapy', durationMin: 30, price: 70000, category: 'Facial', colorClass: 'bg-amber-600' }
+        ];
+
+        // Initial Sample Therapists
+        const defaultTherapists = [
+            { id: 't1', name: 'Mbak Ayu', role: 'Senior Therapist', color: '#0f766e', avatar: 'A' },
+            { id: 't2', name: 'Mbak Siti', role: 'Massage & Lulur', color: '#059669', avatar: 'S' },
+            { id: 't3', name: 'Mas Budi', role: 'Reflexology Specialist', color: '#2563eb', avatar: 'B' },
+            { id: 't4', name: 'Mbak Rini', role: 'Facial & Spa', color: '#9333ea', avatar: 'R' },
+            { id: 't5', name: 'Mbak Dewi', role: 'Junior Therapist', color: '#d97706', avatar: 'D' }
+        ];
+
+        // Timeline Slots Definition (09:00 to 21:00)
+        const START_HOUR = 9;
+        const END_HOUR = 21;
+        const timeSlots = [];
+        
+        for (let h = START_HOUR; h < END_HOUR; h++) {
+            const hourStr = h.toString().padStart(2, '0');
+            timeSlots.push(`${hourStr}:00`);
+            timeSlots.push(`${hourStr}:30`);
+        }
+
+        // State Variables
+        let therapists = [];
+        let treatments = [];
+        let appointments = [];
+        let selectedDate = getTodayString();
+
+        function getTodayString() {
+            const today = new Date();
+            const offset = today.getTimezoneOffset() * 60000;
+            return (new Date(today - offset)).toISOString().split('T')[0];
+        }
+
+        function formatIDR(num) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+        }
+
+        function timeToMinutes(timeStr) {
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function loadData() {
+            // Load Therapists
+            const storedTherapists = localStorage.getItem(STORAGE_KEY_THERAPISTS);
+            if (storedTherapists) {
+                try { therapists = JSON.parse(storedTherapists); } catch(e) { therapists = [...defaultTherapists]; }
+            } else {
+                therapists = [...defaultTherapists];
+                saveTherapists();
+            }
+
+            // Load Treatments
+            const storedTreatments = localStorage.getItem(STORAGE_KEY_TREATMENTS);
+            if (storedTreatments) {
+                try { treatments = JSON.parse(storedTreatments); } catch(e) { treatments = [...defaultTreatments]; }
+            } else {
+                treatments = [...defaultTreatments];
+                saveTreatments();
+            }
+
+            // Load Appointments
+            const storedAppts = localStorage.getItem(STORAGE_KEY_APPTS);
+            if (storedAppts) {
+                try { appointments = JSON.parse(storedAppts); } catch(e) { appointments = generateSampleAppointments(selectedDate); }
+            } else {
+                appointments = generateSampleAppointments(selectedDate);
+                saveAppointments();
+            }
+        }
+
+        function saveTherapists() {
+            localStorage.setItem(STORAGE_KEY_THERAPISTS, JSON.stringify(therapists));
+        }
+
+        function saveTreatments() {
+            localStorage.setItem(STORAGE_KEY_TREATMENTS, JSON.stringify(treatments));
+        }
+
+        function saveAppointments() {
+            localStorage.setItem(STORAGE_KEY_APPTS, JSON.stringify(appointments));
+        }
+
+        function generateSampleAppointments(dateStr) {
+            return [
+                { id: 'a1', date: dateStr, therapistId: 't1', treatmentId: 'tr1', customer: 'Ibu Ratna', startTime: '10:00', endTime: '11:30' },
+                { id: 'a2', date: dateStr, therapistId: 't2', treatmentId: 'tr3', customer: 'Mbak Dita', startTime: '09:00', endTime: '10:00' },
+                { id: 'a3', date: dateStr, therapistId: 't3', treatmentId: 'tr5', customer: 'Pak Andi', startTime: '13:00', endTime: '13:45' },
+                { id: 'a4', date: dateStr, therapistId: 't4', treatmentId: 'tr6', customer: 'Kak Nisa', startTime: '15:30', endTime: '16:00' }
+            ];
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('dateSelect').value = selectedDate;
+            
+            loadData();
+            renderTimelineGrid();
+            renderTherapistDirectory();
+            renderTreatmentTable();
+            populateFormOptions();
+
+            document.getElementById('dateSelect').addEventListener('change', (e) => {
+                selectedDate = e.target.value;
+                renderTimelineGrid();
+            });
+
+            document.getElementById('bookingForm').addEventListener('submit', handleBookingSubmit);
+            document.getElementById('addTherapistForm').addEventListener('submit', handleAddTherapistSubmit);
+            document.getElementById('addTreatmentForm').addEventListener('submit', handleAddTreatmentSubmit);
+            
+            setupColorPickerOptions();
+        });
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('bg-spa-600', 'text-white', 'shadow-sm');
+                btn.classList.add('text-spa-200', 'hover:text-white', 'hover:bg-spa-800/80');
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            activeBtn.classList.add('bg-spa-600', 'text-white', 'shadow-sm');
+            activeBtn.classList.remove('text-spa-200', 'hover:text-white', 'hover:bg-spa-800/80');
+
+            if (tabId === 'timeline') {
+                renderTimelineGrid();
+                document.getElementById('toolbar-container').classList.remove('hidden');
+            } else {
+                document.getElementById('toolbar-container').classList.add('hidden');
+            }
+        }
+
+        function changeDate(days) {
+            const dt = new Date(selectedDate);
+            dt.setDate(dt.getDate() + days);
+            const offset = dt.getTimezoneOffset() * 60000;
+            selectedDate = (new Date(dt - offset)).toISOString().split('T')[0];
+            document.getElementById('dateSelect').value = selectedDate;
+            renderTimelineGrid();
+        }
+
+        function setToday() {
+            selectedDate = getTodayString();
+            document.getElementById('dateSelect').value = selectedDate;
+            renderTimelineGrid();
+        }
+
+        function renderTimelineGrid() {
+            const grid = document.getElementById('timelineGrid');
+            grid.innerHTML = '';
+
+            // 1. Top-Left Corner Header Cell
+            const cornerCell = document.createElement('div');
+            cornerCell.className = 'sticky-corner p-3 flex flex-col justify-center border-b border-r border-slate-200';
+            cornerCell.innerHTML = `
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Daftar Staf</span>
+                <span class="font-bold text-xs text-slate-800 flex items-center gap-1">
+                    <i class="fa-solid fa-users text-spa-600"></i> Terapis (${therapists.length})
+                </span>
+            `;
+            grid.appendChild(cornerCell);
+
+            // 2. Top Header Time Slot Labels
+            timeSlots.forEach(time => {
+                const timeHeader = document.createElement('div');
+                const isHour = time.endsWith(':00');
+                timeHeader.className = `sticky-header p-2 flex items-center justify-center text-xs font-semibold border-b border-r border-slate-200 ${isHour ? 'text-slate-800 font-bold bg-slate-100/80' : 'text-slate-400 font-normal'}`;
+                timeHeader.textContent = time;
+                grid.appendChild(timeHeader);
+            });
+
+            // 3. Filter Appointments for Current Date
+            const todaysAppts = appointments.filter(a => a.date === selectedDate);
+            document.getElementById('scheduleCount').textContent = `${todaysAppts.length} Booking`;
+
+            // Render Legend
+            renderLegend();
+
+            // 4. Render Rows for Each Therapist
+            therapists.forEach((therapist, therapistIndex) => {
+                const rowIndex = therapistIndex + 2;
+
+                const therapistColCell = document.createElement('div');
+                therapistColCell.className = 'sticky-col p-2.5 flex items-center justify-between border-b border-r border-slate-200 gap-2';
+                therapistColCell.style.gridRow = rowIndex;
+                therapistColCell.style.gridColumn = 1;
+
+                therapistColCell.innerHTML = `
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <div class="w-8 h-8 rounded-full text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm" style="background-color: ${therapist.color}">
+                            ${therapist.avatar || therapist.name.charAt(0)}
+                        </div>
+                        <div class="truncate">
+                            <div class="font-bold text-xs text-slate-800 truncate">${therapist.name}</div>
+                            <div class="text-[10px] text-slate-400 truncate">${therapist.role}</div>
+                        </div>
+                    </div>
+                    <button onclick="openDeleteTherapistModal('${therapist.id}')" class="text-slate-300 hover:text-rose-600 p-1 rounded-lg transition-colors shrink-0" title="Hapus Terapis">
+                        <i class="fa-regular fa-trash-can text-xs"></i>
+                    </button>
+                `;
+                grid.appendChild(therapistColCell);
+
+                timeSlots.forEach((time, slotIndex) => {
+                    const colIndex = slotIndex + 2;
+                    const slotCell = document.createElement('div');
+                    slotCell.className = 'slot-cell border-b border-r border-slate-100';
+                    slotCell.style.gridRow = rowIndex;
+                    slotCell.style.gridColumn = colIndex;
+
+                    slotCell.onclick = (e) => {
+                        if (e.target === slotCell) {
+                            openBookingModal(therapist.id, time);
+                        }
+                    };
+
+                    grid.appendChild(slotCell);
+                });
+
+                const therapistAppts = todaysAppts.filter(a => a.therapistId === therapist.id);
+                
+                therapistAppts.forEach(appt => {
+                    const treatment = treatments.find(t => t.id === appt.treatmentId);
+                    
+                    const startSlotIdx = timeSlots.indexOf(appt.startTime);
+                    const endSlotIdx = timeSlots.indexOf(appt.endTime);
+
+                    if (startSlotIdx !== -1) {
+                        const colStart = startSlotIdx + 2;
+                        const colEnd = endSlotIdx !== -1 ? (endSlotIdx + 2) : (colStart + Math.ceil((treatment ? treatment.durationMin : 60) / 30));
+
+                        const apptCard = document.createElement('div');
+                        apptCard.className = `appointment-card ${treatment ? treatment.colorClass : 'bg-teal-600'}`;
+                        apptCard.style.gridRow = rowIndex;
+                        apptCard.style.gridColumn = `${colStart} / ${colEnd}`;
+
+                        apptCard.innerHTML = `
+                            <div class="font-bold truncate text-[11px] leading-tight">${appt.customer}</div>
+                            <div class="text-[9px] opacity-90 truncate">${treatment ? treatment.name : 'Treatment'}</div>
+                            <div class="text-[9px] opacity-80 mt-auto font-medium"><i class="fa-regular fa-clock mr-0.5"></i> ${appt.startTime} - ${appt.endTime}</div>
+                        `;
+
+                        apptCard.onclick = (e) => {
+                            e.stopPropagation();
+                            openDetailModal(appt.id);
+                        };
+
+                        grid.appendChild(apptCard);
+                    }
+                });
+            });
+
+            if (therapists.length === 0) {
+                const emptyRow = document.createElement('div');
+                emptyRow.className = 'col-span-25 p-8 text-center text-slate-400 text-xs bg-white';
+                emptyRow.innerHTML = `
+                    <i class="fa-solid fa-user-slash text-2xl mb-2 text-slate-300 block"></i>
+                    Belum ada terapis. Klik tombol <strong>"+ Tambah Terapis"</strong> di atas untuk memulai.
+                `;
+                grid.appendChild(emptyRow);
+            }
+        }
+
+        function renderLegend() {
+            const container = document.getElementById('legendContainer');
+            container.innerHTML = '<span class="font-bold text-slate-600">Kategori:</span>';
+            
+            const categories = [...new Set(treatments.map(t => t.category))];
+            categories.forEach(cat => {
+                const sampleTr = treatments.find(t => t.category === cat);
+                if (sampleTr) {
+                    container.innerHTML += `
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full ${sampleTr.colorClass}"></span>
+                            <span>${cat}</span>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function renderTherapistDirectory() {
+            const container = document.getElementById('therapistDirectory');
+            container.innerHTML = '';
+
+            therapists.forEach(t => {
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow";
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl text-white font-bold text-base flex items-center justify-center shadow-sm" style="background-color: ${t.color}">
+                            ${t.avatar || t.name.charAt(0)}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-sm">${t.name}</h4>
+                            <p class="text-xs text-spa-600 font-medium">${t.role}</p>
+                            <span class="inline-block mt-1 text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-full border border-emerald-200">
+                                Aktif Bertugas
+                            </span>
+                        </div>
+                    </div>
+                    <button onclick="openDeleteTherapistModal('${t.id}')" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all">
+                        <i class="fa-regular fa-trash-can text-sm"></i>
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderTreatmentTable() {
+            const tbody = document.getElementById('treatmentTableBody');
+            tbody.innerHTML = '';
+
+            treatments.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-3.5">
+                        <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs font-semibold text-white ${t.colorClass}">
+                            ${t.category}
+                        </span>
+                    </td>
+                    <td class="p-3.5 font-semibold text-slate-800">${t.name}</td>
+                    <td class="p-3.5 text-slate-600"><i class="fa-regular fa-clock text-xs mr-1 text-slate-400"></i> ${t.durationMin} Menit</td>
+                    <td class="p-3.5 text-right font-bold text-spa-700">${formatIDR(t.price)}</td>
+                    <td class="p-3.5 text-center">
+                        <button onclick="deleteTreatment('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Hapus Treatment">
+                            <i class="fa-regular fa-trash-can text-xs"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (treatments.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="p-6 text-center text-slate-400 text-xs">
+                            Belum ada layanan treatment. Klik tombol "+ Tambah Treatment Baru" untuk membuat katalog.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function populateFormOptions() {
+            const thSelect = document.getElementById('selectTherapist');
+            thSelect.innerHTML = '';
+            therapists.forEach(t => {
+                thSelect.innerHTML += `<option value="${t.id}">${t.name} (${t.role})</option>`;
+            });
+
+            const trSelect = document.getElementById('selectTreatment');
+            trSelect.innerHTML = '<option value="" disabled selected>Pilih Perawatan...</option>';
+            treatments.forEach(t => {
+                trSelect.innerHTML += `<option value="${t.id}">${t.name} (${t.durationMin} mnt - ${formatIDR(t.price)})</option>`;
+            });
+
+            const stSelect = document.getElementById('selectStartTime');
+            stSelect.innerHTML = '<option value="" disabled selected>Jam Mulai...</option>';
+
+            const etSelect = document.getElementById('selectEndTime');
+            etSelect.innerHTML = '<option value="" disabled selected>Jam Selesai...</option>';
+
+            const extendedTimeSlots = [...timeSlots, '21:00', '21:30', '22:00'];
+
+            timeSlots.forEach(slot => {
+                stSelect.innerHTML += `<option value="${slot}">${slot}</option>`;
+            });
+
+            extendedTimeSlots.forEach(slot => {
+                etSelect.innerHTML += `<option value="${slot}">${slot}</option>`;
+            });
+        }
+
+        function openBookingModal(therapistId = '', startTime = '') {
+            populateFormOptions();
+            document.getElementById('bookingForm').reset();
+            document.getElementById('inputBookingDate').value = selectedDate;
+
+            if (therapistId) document.getElementById('selectTherapist').value = therapistId;
+            if (startTime) document.getElementById('selectStartTime').value = startTime;
+
+            calculateEndTime();
+
+            const modal = document.getElementById('bookingModal');
+            const card = document.getElementById('bookingModalCard');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeBookingModal() {
+            const modal = document.getElementById('bookingModal');
+            const card = document.getElementById('bookingModalCard');
+            modal.classList.add('opacity-0');
+            card.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function calculateEndTime() {
+            const trId = document.getElementById('selectTreatment').value;
+            const startTime = document.getElementById('selectStartTime').value;
+            const endTimeSelect = document.getElementById('selectEndTime');
+
+            if (!trId || !startTime) {
+                return;
+            }
+
+            const treatment = treatments.find(t => t.id === trId);
+            if (!treatment) return;
+
+            const startMins = timeToMinutes(startTime);
+            const endMins = startMins + treatment.durationMin;
+
+            const endH = Math.floor(endMins / 60);
+            const endM = endMins % 60;
+
+            const endFormatted = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+            endTimeSelect.value = endFormatted;
+        }
+
+        function handleBookingSubmit(e) {
+            e.preventDefault();
+
+            const customer = document.getElementById('inputCustomer').value.trim();
+            const therapistId = document.getElementById('selectTherapist').value;
+            const date = document.getElementById('inputBookingDate').value;
+            const treatmentId = document.getElementById('selectTreatment').value;
+            const startTime = document.getElementById('selectStartTime').value;
+            const endTime = document.getElementById('selectEndTime').value;
+
+            if (!endTime) {
+                showToast('Mohon pilih Jam Selesai!', 'bg-rose-600', 'fa-triangle-exclamation');
+                return;
+            }
+
+            const startMins = timeToMinutes(startTime);
+            const endMins = timeToMinutes(endTime);
+
+            const isColliding = appointments.some(app => {
+                if (app.date !== date || app.therapistId !== therapistId) return false;
+                const appStart = timeToMinutes(app.startTime);
+                const appEnd = timeToMinutes(app.endTime);
+                return (startMins < appEnd && endMins > appStart);
+            });
+
+            if (isColliding) {
+                showToast('Jadwal bentrok! Terapis sudah memiliki agenda di jam ini.', 'bg-rose-600', 'fa-triangle-exclamation');
+                return;
+            }
+
+            const newAppt = {
+                id: 'a_' + Date.now(),
+                date,
+                therapistId,
+                treatmentId,
+                startTime,
+                endTime,
+                customer
+            };
+
+            appointments.push(newAppt);
+            saveAppointments();
+            renderTimelineGrid();
+            closeBookingModal();
+            showToast('Jadwal booking berhasil disimpan!', 'bg-spa-600', 'fa-circle-check');
+        }
+
+        function openDetailModal(apptId) {
+            const appt = appointments.find(a => a.id === apptId);
+            if (!appt) return;
+
+            const therapist = therapists.find(t => t.id === appt.therapistId);
+            const treatment = treatments.find(t => t.id === appt.treatmentId);
+
+            document.getElementById('detailCustomerName').textContent = appt.customer;
+            document.getElementById('detailTherapistName').textContent = therapist ? therapist.name : '-';
+            document.getElementById('detailTimeSpan').textContent = `${appt.startTime} - ${appt.endTime}`;
+            document.getElementById('detailTreatmentName').textContent = treatment ? treatment.name : '-';
+            document.getElementById('detailDuration').textContent = treatment ? `${treatment.durationMin} Menit` : '-';
+            document.getElementById('detailPrice').textContent = treatment ? formatIDR(treatment.price) : '-';
+
+            document.getElementById('btnDeleteAppt').onclick = () => deleteAppointment(apptId);
+
+            const modal = document.getElementById('detailModal');
+            const card = document.getElementById('detailModalCard');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeDetailModal() {
+            const modal = document.getElementById('detailModal');
+            const card = document.getElementById('detailModalCard');
+            modal.classList.add('opacity-0');
+            card.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function deleteAppointment(apptId) {
+            appointments = appointments.filter(a => a.id !== apptId);
+            saveAppointments();
+            renderTimelineGrid();
+            closeDetailModal();
+            showToast('Jadwal booking telah dihapus', 'bg-rose-600', 'fa-trash-can');
+        }
+
+        function setupColorPickerOptions() {
+            const colors = ['#0f766e', '#059669', '#2563eb', '#9333ea', '#d97706', '#dc2626'];
+            const container = document.getElementById('colorPickerOptions');
+            container.innerHTML = '';
+
+            colors.forEach((c, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `w-7 h-7 rounded-full transition-transform border-2 ${idx === 0 ? 'border-slate-800 scale-110' : 'border-transparent'}`;
+                btn.style.backgroundColor = c;
+                btn.onclick = () => {
+                    document.querySelectorAll('#colorPickerOptions button').forEach(b => b.classList.replace('border-slate-800', 'border-transparent'));
+                    btn.classList.replace('border-transparent', 'border-slate-800');
+                    document.getElementById('inputTherapistColor').value = c;
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function openAddTherapistModal() {
+            document.getElementById('addTherapistForm').reset();
+            const modal = document.getElementById('addTherapistModal');
+            const card = document.getElementById('addTherapistModalCard');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeAddTherapistModal() {
+            const modal = document.getElementById('addTherapistModal');
+            const card = document.getElementById('addTherapistModalCard');
+            modal.classList.add('opacity-0');
+            card.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function handleAddTherapistSubmit(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('inputTherapistName').value.trim();
+            const role = document.getElementById('inputTherapistRole').value.trim();
+            const color = document.getElementById('inputTherapistColor').value;
+
+            const newTherapist = {
+                id: 't_' + Date.now(),
+                name,
+                role,
+                color,
+                avatar: name.charAt(0).toUpperCase()
+            };
+
+            therapists.push(newTherapist);
+            saveTherapists();
+            renderTimelineGrid();
+            renderTherapistDirectory();
+            closeAddTherapistModal();
+            showToast(`Terapis ${name} berhasil ditambahkan!`, 'bg-spa-600', 'fa-user-check');
+        }
+
+        let deletingTherapistId = null;
+
+        function openDeleteTherapistModal(therapistId) {
+            const therapist = therapists.find(t => t.id === therapistId);
+            if (!therapist) return;
+
+            deletingTherapistId = therapistId;
+            document.getElementById('deleteTherapistTargetName').textContent = therapist.name;
+            document.getElementById('btnConfirmDeleteTherapist').onclick = confirmDeleteTherapist;
+
+            const modal = document.getElementById('deleteTherapistModal');
+            const card = document.getElementById('deleteTherapistModalCard');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeDeleteTherapistModal() {
+            const modal = document.getElementById('deleteTherapistModal');
+            const card = document.getElementById('deleteTherapistModalCard');
+            modal.classList.add('opacity-0');
+            card.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function confirmDeleteTherapist() {
+            if (!deletingTherapistId) return;
+
+            therapists = therapists.filter(t => t.id !== deletingTherapistId);
+            appointments = appointments.filter(a => a.therapistId !== deletingTherapistId);
+
+            saveTherapists();
+            saveAppointments();
+            
+            renderTimelineGrid();
+            renderTherapistDirectory();
+            closeDeleteTherapistModal();
+            showToast('Staf terapis berhasil dihapus', 'bg-rose-600', 'fa-user-minus');
+        }
+
+        // --- TREATMENT MANAGEMENT FUNCTIONS ---
+        function openAddTreatmentModal() {
+            document.getElementById('addTreatmentForm').reset();
+            const modal = document.getElementById('addTreatmentModal');
+            const card = document.getElementById('addTreatmentModalCard');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeAddTreatmentModal() {
+            const modal = document.getElementById('addTreatmentModal');
+            const card = document.getElementById('addTreatmentModalCard');
+            modal.classList.add('opacity-0');
+            card.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function handleAddTreatmentSubmit(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('inputTreatmentName').value.trim();
+            const category = document.getElementById('inputTreatmentCategory').value.trim();
+            const durationMin = parseInt(document.getElementById('inputTreatmentDuration').value);
+            const price = parseInt(document.getElementById('inputTreatmentPrice').value);
+            const colorClass = document.getElementById('inputTreatmentColorClass').value;
+
+            const newTreatment = {
+                id: 'tr_' + Date.now(),
+                name,
+                category,
+                durationMin,
+                price,
+                colorClass
+            };
+
+            treatments.push(newTreatment);
+            saveTreatments();
+            renderTreatmentTable();
+            populateFormOptions();
+            renderLegend();
+            closeAddTreatmentModal();
+            showToast(`Layanan ${name} berhasil ditambahkan!`, 'bg-spa-600', 'fa-circle-check');
+        }
+
+        function deleteTreatment(treatmentId) {
+            const tr = treatments.find(t => t.id === treatmentId);
+            if (!tr) return;
+
+            if (confirm(`Apakah Anda yakin ingin menghapus layanan "${tr.name}"?`)) {
+                treatments = treatments.filter(t => t.id !== treatmentId);
+                saveTreatments();
+                renderTreatmentTable();
+                populateFormOptions();
+                renderLegend();
+                showToast('Layanan treatment berhasil dihapus', 'bg-rose-600', 'fa-trash-can');
+            }
+        }
+
+        function openClearConfirmModal() {
+            document.getElementById('clearTargetDateText').textContent = selectedDate;
+            const modal = document.getElementById('clearConfirmModal');
+            const card = document.getElementById('clearConfirmModalCard');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeClearConfirmModal() {
+            const modal = document.getElementById('clearConfirmModal');
+            const card = document.getElementById('clearConfirmModalCard');
+            modal.classList.add('opacity-0');
+            card.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function confirmClearToday() {
+            appointments = appointments.filter(a => a.date !== selectedDate);
+            saveAppointments();
+            renderTimelineGrid();
+            closeClearConfirmModal();
+            showToast(`Jadwal untuk tanggal ${selectedDate} telah dibersihkan`, 'bg-rose-600', 'fa-circle-check');
+        }
+
+        function openResetModal() {
+            therapists = [...defaultTherapists];
+            treatments = [...defaultTreatments];
+            appointments = generateSampleAppointments(selectedDate);
+            saveTherapists();
+            saveTreatments();
+            saveAppointments();
+            renderTimelineGrid();
+            renderTherapistDirectory();
+            renderTreatmentTable();
+            populateFormOptions();
+            showToast('Data jadwal, terapis, & treatment berhasil di-reset!', 'bg-spa-600', 'fa-rotate-left');
+        }
+
+        function showToast(message, bgClass = 'bg-spa-600', iconClass = 'fa-circle-check') {
+            const toast = document.getElementById('toastNotification');
+            const msgEl = document.getElementById('toastMessage');
+            const iconEl = document.getElementById('toastIcon');
+
+            toast.className = `fixed bottom-5 right-5 z-50 transform transition-all duration-300 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-xs font-semibold text-white ${bgClass}`;
+            iconEl.className = `fa-solid ${iconClass} text-sm`;
+            msgEl.textContent = message;
+
+            toast.classList.remove('translate-y-10', 'opacity-0', 'pointer-events-none');
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
